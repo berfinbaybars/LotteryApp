@@ -9,8 +9,8 @@ contract Lottery {
     TLToken tl;
     TicketToken ticket;
     uint256 constant ticketPrice = 10;
-    uint256 constant purchaseDuration = 2 minutes; //how much time players can buy tickets in each lottery
-    uint256 constant revealDuration = 2 minutes; //how much time players can reveal tickets in each lottery
+    uint256 constant purchaseDuration = 1 seconds; //how much time players can buy tickets in each lottery
+    uint256 constant revealDuration = 100 seconds; //how much time players can reveal tickets in each lottery
     uint256 constant lotteryDuration = purchaseDuration + revealDuration; // how much time each lottery will be active
     uint256 startDate; //when the contract started (will be used to determine how much time spend since start)
 
@@ -53,6 +53,7 @@ contract Lottery {
     }
 
     modifier ticketOwner(uint lottery_no, uint ticket_no){
+        require(lotteries[lottery_no].tickets.length > ticket_no, "Ticket does not exist.");
         require(lotteries[lottery_no].tickets[ticket_no].owner == msg.sender, "This is not your ticket.");
         _;
     }
@@ -122,7 +123,7 @@ contract Lottery {
 
     function getLastOwnedTicketNo(uint lottery_no) public view lotteryExists(lottery_no) returns(uint,uint8 status){
         uint ticketno = ticket.lastTicketOfAccount(msg.sender, lottery_no);
-        uint8 _status = lotteries[lottery_no].tickets[ticketno].isRedeemed ? 2 : lotteries[lottery_no].tickets[ticketno].isRevealed ? 1 : 0;//will be explained to user in interface
+        uint8 _status = lotteries[lottery_no].tickets[ticketno].isRefunded ? 3 :lotteries[lottery_no].tickets[ticketno].isRedeemed ? 2 : lotteries[lottery_no].tickets[ticketno].isRevealed ? 1 : 0; //will be explained to user in interface
         
         return (ticketno, _status);
     }
@@ -130,7 +131,7 @@ contract Lottery {
     function getIthOwnedTicketNo(uint i,uint lottery_no) public view lotteryExists(lottery_no) returns(uint,uint8 status) {
         require(i > 0, "You cannot send 0.");
         uint ticketno = ticket.ithTicketOfAccount(msg.sender, lottery_no, i);
-        uint8 _status = lotteries[lottery_no].tickets[ticketno].isRedeemed ? 2 : lotteries[lottery_no].tickets[ticketno].isRevealed ? 1 : 0; //will be explained to user in interface
+        uint8 _status = lotteries[lottery_no].tickets[ticketno].isRefunded ? 3 :lotteries[lottery_no].tickets[ticketno].isRedeemed ? 2 : lotteries[lottery_no].tickets[ticketno].isRevealed ? 1 : 0; //will be explained to user in interface
         return (ticketno, _status);
     }
 
@@ -167,6 +168,7 @@ contract Lottery {
     function collectTicketPrize(uint ticket_no, uint lottery_no) public lotteryExists(lottery_no) lotteryPrizes(lottery_no) 
     ticketOwner(lottery_no, ticket_no){
         require(lotteries[lottery_no].tickets[ticket_no].reward > 0, "Ticket does not win any prize.");
+        require(lotteries[lottery_no].tickets[ticket_no].isRedeemed == false, "Ticket prize has already been collected.");
         tl.addTL(lotteries[lottery_no].tickets[ticket_no].reward, msg.sender);
         lotteries[lottery_no].tickets[ticket_no].isRedeemed = true;
     }
@@ -180,6 +182,8 @@ contract Lottery {
 
     function getIthWinningTicket(uint i, uint lottery_no) public lotteryExists(lottery_no) lotteryPrizes(lottery_no)
     returns (uint ticket_no, uint amount){
+        uint winnerCount = ticket.getWinnerCount(lottery_no);
+        require(i <= winnerCount, "There is no winner with that number.");
         return ticket.getIthWinnerTicket(i, lottery_no, getTotalLotteryMoneyCollected(lottery_no));
     }
 }

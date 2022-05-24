@@ -23,6 +23,7 @@ contract TicketToken is ERC721 {
     }
 
     function lastTicketOfAccount(address sender, uint lotteryNo) public view returns(uint256){
+        require(balances[sender][lotteryNo].length > 0, "You do not have any ticket for this lottery.");
         return balances[sender][lotteryNo][balances[sender][lotteryNo].length-1];
     }
 
@@ -32,6 +33,7 @@ contract TicketToken is ERC721 {
     }
 
     function chooseWinners(uint lotteryNo, uint totalMoney) public returns(uint256[] memory){
+        require(submitted[lotteryNo].length > 0, "No one has submitted. There is no winner.");
         uint winnerCount = findLogarithm(totalMoney);
         for(uint i = 1; i <= winnerCount; i++){
             uint winner = hashNTimes(i, xor[lotteryNo]) % submitted[lotteryNo].length;  
@@ -63,7 +65,10 @@ contract TicketToken is ERC721 {
     }
 
     function getIthWinnerTicket(uint i, uint lottery_no, uint totalMoney) public view returns (uint ticket_no,uint amount){
-        require(i <= winners[lottery_no].length, "There is no winner with that number");
         return (winners[lottery_no][i-1], calculatePrize(i, totalMoney));
+    }
+
+    function getWinnerCount(uint lotteryNo) public view returns(uint){
+        return winners[lotteryNo].length;
     }
 }
