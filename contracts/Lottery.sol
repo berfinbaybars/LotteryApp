@@ -9,8 +9,8 @@ contract Lottery {
     TLToken tl;
     TicketToken ticket;
     uint256 constant ticketPrice = 10;
-    uint256 constant purchaseDuration = 4 days; //how much time players can buy tickets in each lottery
-    uint256 constant revealDuration = 3 days; //how much time players can reveal tickets in each lottery
+    uint256 constant purchaseDuration = 2 minutes; //how much time players can buy tickets in each lottery
+    uint256 constant revealDuration = 2 minutes; //how much time players can reveal tickets in each lottery
     uint256 constant lotteryDuration = purchaseDuration + revealDuration; // how much time each lottery will be active
     uint256 startDate; //when the contract started (will be used to determine how much time spend since start)
 
@@ -26,6 +26,7 @@ contract Lottery {
         uint256 reward;
         bool isRevealed;
         bool isRedeemed;
+        bool isRefunded;
     }
 
     mapping(uint256 => Lotteries) lotteries;
@@ -95,7 +96,8 @@ contract Lottery {
                 hash: hash_rnd_number,
                 reward: 0,
                 isRevealed: false,
-                isRedeemed: false
+                isRedeemed: false,
+                isRefunded: false
             })
         );
     }
@@ -144,7 +146,9 @@ contract Lottery {
     function collectTicketRefund(uint ticket_no, uint lottery_no) public lotteryExists(lottery_no) ticketOwner(lottery_no, ticket_no) 
     lotteryEnded(lottery_no) {
         require(lotteries[lottery_no].tickets[ticket_no].isRevealed == false, "You cannot refund because your ticket is revealed.");
+        require(lotteries[lottery_no].tickets[ticket_no].isRefunded == false, "You cannot refund because your ticket is refunded before.");
         tl.addTL((ticketPrice / 2), msg.sender);
+        lotteries[lottery_no].tickets[ticket_no].isRefunded = true;
     }
 
     function timeSinceStart() public view returns (uint){
